@@ -13,10 +13,10 @@ private:
  double emax, nmax, e0, n0 ;
  int ne, nn ;
  double B , volex0 , delta0 , aaa , bbb;
- double *egrid, **ngrid ;
+ double *egrid, *ngrid ;   // ngrid: ne x nn row-major (contiguous, one indirection)
  double *T, *pre, *mub, *muq, *mus ;
- int eseed;       // last getue() interval, start of guarded walk
- int nseed[3][2]; // last getun() intervals per density slot (nb,nq,ns) x (low,up row)
+ int eseed ;         // last getue() interval, start of guarded walk
+ int nseed[3][2] ;   // last getun() intervals per density slot (nb,nq,ns) x (low,up row)
  inline int index(int ie, int ib, int iq, int is){ return ie + ne*ib + ne*nn*iq + ne*nn*nn*is ; }
 public:
  EoS3f(char *filename, double B, double volex0, double delta0, double aaa, double bbb);
@@ -28,8 +28,7 @@ public:
                     double &un_low, double &un_up, int &iout, int islot) ;
  virtual void eos(double e, double nb, double nq, double ns,
          double &_T, double &_mub, double &_muq, double &_mus, double &_p) ;
- virtual double p(double e, double nb, double nq, double ns);
- { double T, mub, muq, mus, pp ; eos(e, nb, nq, ns, T, mub, muq, mus, pp) ; return pp ; }
+ virtual double p(double e, double nb, double nq, double ns) ;
   virtual void eosorginal(double T, double mu_b, double mu_q, double mu_s, double &e, double& n_b, double& n_q, double& n_s, double& p);
  friend void mix(double T, double mu_b, double mu_q, double mu_s, double &e, double& n_b, double& n_q, double& n_s, double& p);
 };

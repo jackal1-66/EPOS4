@@ -72,16 +72,14 @@ EoS3f::EoS3f(char *filename, double _B, double _volex0, double _delta0, double _
         nextd(emax) ; nextd(e0) ; nexti(ne) ; nexti(nn) ;
 
         egrid = new double [ne] ;
-        ngrid = new double* [ne] ;
-        for(int i=0; i<ne; i++)
-                ngrid[i] = new double [nn] ;
+        ngrid = new double [ne*nn] ;
 
         for(int ixe=0;  ixe<ne;  ixe++)
                 nextd(egrid[ixe]) ;
 
         for(int ixe=0;  ixe<ne;  ixe++)
         for(int ixnb=0; ixnb<nn; ixnb++)
-                nextd(ngrid[ixe][ixnb]) ;
+                nextd(ngrid[ixe*nn+ixnb]) ;
 
         eseed = 0 ;
         for(int i=0; i<3; i++) nseed[i][0] = nseed[i][1] = 0 ;
@@ -157,37 +155,39 @@ void EoS3f::getue(double e, int &ixe, double &ue, int &iout){
 // islot selects the per-density seed (0=nb, 1=nq, 2=ns).
 void EoS3f::getun(int ie, double n, int &ixn_low, int &ixn_up, double &un_low, double &un_up, int &iout, int islot){
         int k1, k2;
+        const double *grlo = ngrid + ie*nn ;      // row ie
+        const double *grup = grlo + nn ;          // row ie+1
         // --- lower side, so for ngird[ie][...]
-        //if(n<ngrid[ie][0] )/*{iout=1;return;}*/ cout<<"getun " <<n<<"  "<<ngrid[ie][0]<<endl;
-        //if(n>ngrid[ie][nn-1] )/*{iout=1;return;}*/ cout <<"getun " <<n<<"  "<<ngrid[ie][nn-1]<<endl;
+        //if(n<grlo[0] )/*{iout=1;return;}*/ cout<<"getun " <<n<<"  "<<grlo[0]<<endl;
+        //if(n>grlo[nn-1] )/*{iout=1;return;}*/ cout <<"getun " <<n<<"  "<<grlo[nn-1]<<endl;
         iout=0;
-        if(n>ngrid[ie][nn-1]) n=ngrid[ie][nn-1];
-        if(n<ngrid[ie][0]) n=ngrid[ie][0];
+        if(n>grlo[nn-1]) n=grlo[nn-1];
+        if(n<grlo[0]) n=grlo[0];
         k1 = nseed[islot][0] ;
-        for(;k1<nn-2 && n>=ngrid[ie][k1+1];) k1++ ;
-        for(;k1>0 && n<ngrid[ie][k1];) k1-- ;
+        for(;k1<nn-2 && n>=grlo[k1+1];) k1++ ;
+        for(;k1>0 && n<grlo[k1];) k1-- ;
         nseed[islot][0] = k1 ;
         k2 = k1+1 ;
         ixn_low=k1;
         if(ixn_low>nn-2) /*{iout=1;return;} // */ ixn_low = nn - 2 ;
         if(ixn_low<0) /*{iout=1;return;}  // */ ixn_low = 0 ;
-        double dxn = ngrid[ie][k2] - ngrid[ie][k1] ;
-        double xnm=n - ngrid[ie][k1] ;
+        double dxn = grlo[k2] - grlo[k1] ;
+        double xnm=n - grlo[k1] ;
         un_low = 0 ;
         if(dxn>0.)un_low = xnm/dxn ;
         // --- upper side so for ngird[ie+1][...]
-        //if(n<ngrid[ie+1][0] )/*{iout=1;return;}*/ cout <<"getun " <<n<<"  "<<ngrid[ie+1][0]<<endl;
-        //if(n>ngrid[ie+1][nn-1] )/*{iout=1;return;}*/ cout <<"getun " <<n<<"  "<<ngrid[ie+1][nn-1]<<endl;
+        //if(n<grup[0] )/*{iout=1;return;}*/ cout <<"getun " <<n<<"  "<<grup[0]<<endl;
+        //if(n>grup[nn-1] )/*{iout=1;return;}*/ cout <<"getun " <<n<<"  "<<grup[nn-1]<<endl;
         k1 = nseed[islot][1] ;
-        for(;k1<nn-2 && n>=ngrid[ie+1][k1+1];) k1++ ;
-        for(;k1>0 && n<ngrid[ie+1][k1];) k1-- ;
+        for(;k1<nn-2 && n>=grup[k1+1];) k1++ ;
+        for(;k1>0 && n<grup[k1];) k1-- ;
         nseed[islot][1] = k1 ;
         k2 = k1+1 ;
         ixn_up=k1;
         if(ixn_up>nn-2) /*{iout=1;return;}  // */ ixn_up = nn - 2 ;
         if(ixn_up<0) /*{iout=1;return;}  // */ ixn_up = 0 ;
-        dxn = ngrid[ie+1][k2] - ngrid[ie+1][k1] ;
-        xnm=n - ngrid[ie+1][k1] ;
+        dxn = grup[k2] - grup[k1] ;
+        xnm=n - grup[k1] ;
         un_up = 0 ;
         if(dxn>0.)un_up = xnm/dxn ;
         //cout<< "EoS3f::getun  "<<un_low<<" "<<un_up<<endl;
