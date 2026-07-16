@@ -232,7 +232,10 @@ rm -f ${CHK}z-${one}.copyDo1
 rm -f ${CHK}z-${one}.copyDo2 
 rm -f ${CHK}z-${one}.log 
 
+# The 439 MB EoS table is only read when the run activates an EoS/hydro
+if grep -qE '^[[:space:]]*(eos|hydro|input)[[:space:]]' ${OPX}z-${one}.optns; then
 gunzip -c ${SRC}KWt/eos4f.eos.gz > z-eos4f.eos
+fi
 
 seedj=$seed_j
 seedi=$seed_i    
