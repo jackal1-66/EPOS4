@@ -27,6 +27,11 @@ HepMC3::WriterGZ<HepMC3::WriterAscii> *writerGZ;
 HepMC3::WriterAscii *writer;
 #endif
 bool asciiWrite = false;
+// stdout ALICE streaming mode (-hepstd): the writer shares std::cout buffer
+// and the stream is flushed at event boundaries, so no other
+// stdout writer (C++ logs, Fortran unit 6) can splice into a partially
+// flushed event
+bool stdoutWrite = false;
 
 std::shared_ptr<HepMC3::GenRunInfo> run;
 
@@ -114,10 +119,14 @@ void openhepmc_(const char *filename) {
   struct HepMC3::GenRunInfo::ToolInfo config = {option_filename, "1.0", std::string("configuration file")};
   run->tools().push_back(config);
 
+  // In stdout ALICE streaming mode the writer must share std::cout buffer
+  stdoutWrite = (strcmp(filename, "/dev/stdout") == 0) && !checkFifo;
 #if defined HEPMC3_USE_COMPRESSION && defined HEPMC3_Z_SUPPORT
   if(strcmp(filename, "/dev/stdout") == 0 || asciiWrite) {
     if (checkFifo) {
       writer = new HepMC3::WriterAscii(checkStd, run);
+    } else if (stdoutWrite) {
+      writer = new HepMC3::WriterAscii(std::cout, run);
     } else {
       writer = new HepMC3::WriterAscii(filename, run);
     }
@@ -128,6 +137,8 @@ void openhepmc_(const char *filename) {
 #else
   if (checkFifo) {
     writer = new HepMC3::WriterAscii(checkStd, run);
+  } else if (stdoutWrite) {
+    writer = new HepMC3::WriterAscii(std::cout, run);
   } else {
     writer = new HepMC3::WriterAscii(filename, run);
   }
@@ -946,6 +957,10 @@ void fillhepmc_(int *_iextree, int *_ihepmc3, int *_nevt, float *_eng, float *_d
     writer->write_event(evt);
   else
     writerGZ->write_event(evt);
+  // flush complete events immediately so no other stdout writer can splice
+  // into buffered event data (writer shares std::cout in this mode)
+  if(stdoutWrite)
+    std::cout.flush();
 }
 
 /**
@@ -953,10 +968,14 @@ void fillhepmc_(int *_iextree, int *_ihepmc3, int *_nevt, float *_eng, float *_d
  * @brief Function deleting the HepMC event object
  */
 void closehepmc_() {
-  std::cout << "***HepMC file close***" << std::endl;
+  // close (and flush) the event stream before printing the status message,
+  // not after - the old order let this line splice into buffered event data
   if (asciiWrite)
     writer->close();
   else
     writerGZ->close();
+  if (stdoutWrite)
+    std::cout.flush();
+  std::cout << "***HepMC file close***" << std::endl;
   delete writer;
 }
