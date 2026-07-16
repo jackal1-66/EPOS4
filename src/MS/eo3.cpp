@@ -11,6 +11,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
+#include <charconv>
+#include <string>
 #include "es.h"
 #include "eo3.h"
 
@@ -28,10 +30,37 @@ double sign(double x)
 
 EoS3f::EoS3f(char *filename, double _B, double _volex0, double _delta0, double _aaa, double _bbb)
 {
-        ifstream fin (filename) ;
-        
-        fin >> B >> volex0 >> delta0 >> aaa >> bbb  ;
-        if( B > 0 ) 
+        // Bulk-read the table and tokenize with std::from_chars instead of
+        // per-token ifstream>>. The istream/locale overhead is removed,
+        // meaning tens of seconds per job on the ~440 MB eos4f table.
+        string buf ;
+        {
+                ifstream fraw (filename, ios::binary) ;
+                fraw.seekg(0, ios::end) ;
+                streamoff len = fraw.tellg() ;
+                if(len < 0) len = 0 ;
+                buf.resize((size_t)len) ;
+                fraw.seekg(0, ios::beg) ;
+                if(len > 0) fraw.read(&buf[0], len) ;
+        }
+        const char *sp = buf.data() ;
+        const char *se = sp + buf.size() ;
+        bool okread = true ;
+        auto nextd = [&](double &v){
+                while(sp<se && (*sp==' '||*sp=='\n'||*sp=='\t'||*sp=='\r'||*sp=='\v'||*sp=='\f')) ++sp ;
+                std::from_chars_result r = std::from_chars(sp, se, v) ;
+                if(r.ec != std::errc()){ v = 0 ; okread = false ; return ; }  // 0 on failure, like istream>>
+                sp = r.ptr ;
+        } ;
+        auto nexti = [&](int &v){
+                while(sp<se && (*sp==' '||*sp=='\n'||*sp=='\t'||*sp=='\r'||*sp=='\v'||*sp=='\f')) ++sp ;
+                std::from_chars_result r = std::from_chars(sp, se, v) ;
+                if(r.ec != std::errc()){ v = 0 ; okread = false ; return ; }
+                sp = r.ptr ;
+        } ;
+
+        nextd(B) ; nextd(volex0) ; nextd(delta0) ; nextd(aaa) ; nextd(bbb) ;
+        if( B > 0 )
         {
         if(fabs(B-_B)          >1e-5){ cout <<"\n\n\n      B =      "<<B     <<" instead of "<<_B     <<"; exiting\n\n\n\n" ; exit(0) ; }
         if(fabs(volex0-_volex0)>1e-5){ cout <<"\n\n\n      volex0 = "<<volex0<<" instead of "<<_volex0<<"; exiting\n\n\n\n" ; exit(0) ; }
@@ -40,7 +69,7 @@ EoS3f::EoS3f(char *filename, double _B, double _volex0, double _delta0, double _
         if(fabs(bbb-_bbb)      >1e-5){ cout <<"\n\n\n      bbb =    "<<bbb   <<" instead of "<<_bbb   <<"; exiting\n\n\n\n" ; exit(0) ; }
         }
        
-        fin >> emax >> e0 >> ne >> nn ;
+        nextd(emax) ; nextd(e0) ; nexti(ne) ; nexti(nn) ;
 
         egrid = new double [ne] ;
         ngrid = new double* [ne] ;
@@ -48,12 +77,12 @@ EoS3f::EoS3f(char *filename, double _B, double _volex0, double _delta0, double _
                 ngrid[i] = new double [nn] ;
 
         for(int ixe=0;  ixe<ne;  ixe++)
-                fin >> egrid[ixe] ;
-        
+                nextd(egrid[ixe]) ;
+
         for(int ixe=0;  ixe<ne;  ixe++)
         for(int ixnb=0; ixnb<nn; ixnb++)
-                fin >> ngrid[ixe][ixnb] ;
-               
+                nextd(ngrid[ixe][ixnb]) ;
+
         eseed = 0 ;
         for(int i=0; i<3; i++) nseed[i][0] = nseed[i][1] = 0 ;
 
@@ -63,24 +92,24 @@ EoS3f::EoS3f(char *filename, double _B, double _volex0, double _delta0, double _
         muq = new double [ne*nn*nn*nn] ;
         mus = new double [ne*nn*nn*nn] ;
 
-        int line=4; 
+        int line=4;
         for(int ie=0; ie<ne; ie++)
         for(int inb=0; inb<nn; inb++)
         for(int inq=0; inq<nn; inq++)
         for(int ins=0; ins<nn; ins++){
                 line++;
-                fin >> pre[index(ie,inb,inq,ins)] >> T[index(ie,inb,inq,ins)] 
-                >> mub[index(ie,inb,inq,ins)] >> muq[index(ie,inb,inq,ins)] >> mus[index(ie,inb,inq,ins)] ;
-                if(fin.fail()){
+                const int idx = index(ie,inb,inq,ins) ;
+                nextd(pre[idx]) ; nextd(T[idx]) ;
+                nextd(mub[idx]) ; nextd(muq[idx]) ; nextd(mus[idx]) ;
+                if(!okread){
                   cout<<"reading failed, line="<<line<<endl;
                   exit(13);
                 }
-                if( pre[index(ie,inb,inq,ins)] < 1e-18 ) pre[index(ie,inb,inq,ins)] = 0. ;
+                if( pre[idx] < 1e-18 ) pre[idx] = 0. ;
                 //if(line==1000000)cout<<endl<<"EoS3f::EoS3f "<<line<<"  "<<index(ie,inb,inq,ins)<<"  "
-                //                 << pre[index(ie,inb,inq,ins)] << "  " << T[index(ie,inb,inq,ins)] << "  " << mub[index(ie,inb,inq,ins)] << "  " 
+                //                 << pre[index(ie,inb,inq,ins)] << "  " << T[index(ie,inb,inq,ins)] << "  " << mub[index(ie,inb,inq,ins)] << "  "
                 //                 << muq[index(ie,inb,inq,ins)] << "  " << mus[index(ie,inb,inq,ins)] <<endl;
         }
-        fin.close() ;
 }
 
 EoS3f::~EoS3f()
@@ -104,8 +133,8 @@ void EoS3f::eosranges(double &_emax, double &_e0, double &_nmax, double &_n0, in
 
 // Guarded walk from the previous interval instead of a full binary search.
 // For a non-decreasing grid this yields exactly the interval the original
-// binary search returned (max k in [0,ne-2] with egrid[k]<=e, 
-// for every input; successive calls query nearby e, so the walk is
+// binary search returned (max k in [0,ne-2] with egrid[k]<=e, clamped at the
+// edges), for every input; successive calls query nearby e, so the walk is
 // typically 0-2 steps.
 void EoS3f::getue(double e, int &ixe, double &ue, int &iout){
         int k1, k2;
