@@ -1428,8 +1428,9 @@ c      double precision om5p,xh,yh,v3pom(4),om2p
       common/cpriom/npriom
       character*4 ch4
       character*2 ch2
+      character*520 fnrjt
       npriom=0
-      
+
       call utpri('mkCsOm',ish,ishini,4)
       
       !----------------------------------------------------------------
@@ -2616,7 +2617,17 @@ cKW21     *  .or.factk0 .ne.factk
           write(ifmt,'(80a/)')('-',k=1,80)
           stop
         endif 
-        read(1,*)fhss,fhgg,fhqg,fhgq,fhqq
+        !bulk-parse the arrays in C
+        !ftell gives the offset where the array records start after the header
+        call ftell(1,iofrj)
+        fnrjt=fnii(1:ix)//'rj'//q2mnch(nq2mn)//q2mnch(nq2xx)
+     &       //zzvexch(iv)//'.i'//CHAR(0)
+        call fastreadf(fnrjt,iofrj,fhss,88000,ierrrj)
+        if(ierrrj.eq.0)call fastreadf(fnrjt,iofrj,fhgg,88000,ierrrj)
+        if(ierrrj.eq.0)call fastreadf(fnrjt,iofrj,fhqg,88000,ierrrj)
+        if(ierrrj.eq.0)call fastreadf(fnrjt,iofrj,fhgq,88000,ierrrj)
+        if(ierrrj.eq.0)call fastreadf(fnrjt,iofrj,fhqq,8800,ierrrj)
+        if(ierrrj.ne.0)stop'ERROR reading rj table (fastreadf)'
         close(1)
         if(.not.negjdis)goto 4
 c       else        !not symmetric Qs2
@@ -5334,5 +5345,3 @@ c-----------------------------------------------------------------------
       endif      
       !used to define min s    
       end
-
-

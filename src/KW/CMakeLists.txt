@@ -14,6 +14,7 @@ set(KW_SRC
   d.f
   dky.f
   ems.f
+  fastread.c
   fra.f
   freeze.f
   graph2.f
