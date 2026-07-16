@@ -196,6 +196,42 @@ void EoS3f::eos(double e, double nb, double nq, double ns,
         _T = _mub = _muq = _mus = _p = 0.;
 }
 
+// p-only variant of eos(): same lookups, same weights, same accumulation order
+// for _p, so the returned value is bit-identical to eos()'s _p output; it only
+// skips computing T/mub/muq/mus, which callers of p() discard anyway.
+double EoS3f::p(double e, double nb, double nq, double ns)
+{
+        int ixe, ixnb_low, ixnb_up, ixnq_low, ixnq_up, ixns_low, ixns_up, iout ;
+        double ue, ub_low, ub_up, uq_low, uq_up, us_low, us_up ;
+
+        getue(e,  ixe , ue, iout);                              if(iout==1)return 999.;
+        getun(ixe, nb, ixnb_low, ixnb_up, ub_low, ub_up, iout); if(iout==1)return 999.;
+        getun(ixe, nq, ixnq_low, ixnq_up, uq_low, uq_up, iout); if(iout==1)return 999.;
+        getun(ixe, ns, ixns_low, ixns_up, us_low, us_up, iout); if(iout==1)return 999.;
+
+        const double  we [2] = {1.-ue, ue} ;
+        const double wnb [2][2] = {{1.-ub_low, ub_low},{1.-ub_up, ub_up}} ;
+        const double wnq [2][2] = {{1.-uq_low, uq_low},{1.-uq_up, uq_up}} ;
+        const double wns [2][2] = {{1.-us_low, us_low},{1.-us_up, us_up}} ;
+        const int ixnb[2] = {ixnb_low, ixnb_up} ;
+        const int ixnq[2] = {ixnq_low, ixnq_up} ;
+        const int ixns[2] = {ixns_low, ixns_up} ;
+
+        double _p = 0. ;
+        for(int je=0; je<2; je++)
+        for(int jnb=0; jnb<2; jnb++)
+        for(int jnq=0; jnq<2; jnq++)
+        for(int jns=0; jns<2; jns++){
+          const int idx = index(ixe+je,ixnb[je]+jnb,ixnq[je]+jnq,ixns[je]+jns) ;
+          if(pre[idx]==999.
+             &&T[idx]==999.) return 0. ;
+          const double w = we[je]*wnb[je][jnb]*wnq[je][jnq]*wns[je][jns] ;
+          _p += w*pre[idx] ;
+        }
+        if(_p<0.) _p = 0. ;
+        return _p ;
+}
+
 void EoS3f::eosorginal(double T, double mu_b, double mu_q, double mu_s, double &e, double& n_b, double& n_q, double& n_s, double& p) {
     e =0; n_b=0; n_q=0; n_s=0; p = 0.0;
     mix(T, mu_b, mu_q, mu_s, e, n_b, n_q, n_s, p) ;

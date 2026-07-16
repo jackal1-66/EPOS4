@@ -26,7 +26,7 @@ public:
                     double &un_low, double &un_up, int &iout) ;
  virtual void eos(double e, double nb, double nq, double ns,
          double &_T, double &_mub, double &_muq, double &_mus, double &_p) ;
- virtual inline double p(double e, double nb, double nq, double ns)
+ virtual double p(double e, double nb, double nq, double ns);
  { double T, mub, muq, mus, pp ; eos(e, nb, nq, ns, T, mub, muq, mus, pp) ; return pp ; }
   virtual void eosorginal(double T, double mu_b, double mu_q, double mu_s, double &e, double& n_b, double& n_q, double& n_s, double& p);
  friend void mix(double T, double mu_b, double mu_q, double mu_s, double &e, double& n_b, double& n_q, double& n_s, double& p);
