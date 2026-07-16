@@ -2412,17 +2412,18 @@ c----------------------------------------------------------------------
       r=rangen()
       wtt=0
       do i=1,ipair
-        call idpairstget(1,i+ipairst(2,idx),id1)
-        call idpairstget(2,i+ipairst(2,idx),id2)
         call wgtpairstget(i+ipairst(2,idx),wt)
         wei=wt/wtot
         wtt=wtt+wei
         !write(ifmt,'(a,i6,i6,2x,3i3,3x,2i7,2f9.4)')'hnbpaj',i
-        !.  ,idx,iqu,iqd,iqs,id1,id2,wtt,r
+        !.  ,idx,iqu,iqd,iqs,wtt,r
         if(wtt.ge.r)goto 4
       enddo
       i=min(i,ipair)
   4   continue
+      !only the selected pair ids are needed
+      call idpairstget(1,i+ipairst(2,idx),id1)
+      call idpairstget(2,i+ipairst(2,idx),id2)
 
       !write(ifmt,'(a,3i6,f9.4)')'hnbpaj',i,id1,id2,wei
 
@@ -2431,11 +2432,14 @@ c----------------------------------------------------------------------
       do i=1,ipair
         call idpairstget(1,i+ipairst(2,idx),id1xx)
         call idpairstget(2,i+ipairst(2,idx),id2xx)
-        call wgtpairstget(i+ipairst(2,idx),wt)
-        wei=wt/wtot
         if(id1.eq.id1xx.and.id2.eq.id2xx)goto 5
       enddo
   5   continue
+      !the weight only matters for the matched pair (or the last one when
+      !there is no match). Fetched once now
+      i=min(i,ipair)
+      call wgtpairstget(i+ipairst(2,idx),wt)
+      wei=wt/wtot
  
       endif
 
