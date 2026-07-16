@@ -15,15 +15,17 @@ private:
  double B , volex0 , delta0 , aaa , bbb;
  double *egrid, **ngrid ;
  double *T, *pre, *mub, *muq, *mus ;
+ int eseed;       // last getue() interval, start of guarded walk
+ int nseed[3][2]; // last getun() intervals per density slot (nb,nq,ns) x (low,up row)
  inline int index(int ie, int ib, int iq, int is){ return ie + ne*ib + ne*nn*iq + ne*nn*nn*is ; }
 public:
  EoS3f(char *filename, double B, double volex0, double delta0, double aaa, double bbb);
  ~EoS3f(void);
 
  virtual void eosranges(double &_emax, double &_e0, double &_nmax, double &_n0, int &_ne, int &_nn) ;
- void getue(double e, int &ixe, double &ue, int &iout) ; 
+ void getue(double e, int &ixe, double &ue, int &iout) ;
  void getun(int ie, double n, int &ixn_low, int &ixn_up,
-                    double &un_low, double &un_up, int &iout) ;
+                    double &un_low, double &un_up, int &iout, int islot) ;
  virtual void eos(double e, double nb, double nq, double ns,
          double &_T, double &_mub, double &_muq, double &_mus, double &_p) ;
  virtual double p(double e, double nb, double nq, double ns);

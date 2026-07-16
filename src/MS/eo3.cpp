@@ -54,6 +54,9 @@ EoS3f::EoS3f(char *filename, double _B, double _volex0, double _delta0, double _
         for(int ixnb=0; ixnb<nn; ixnb++)
                 fin >> ngrid[ixe][ixnb] ;
                
+        eseed = 0 ;
+        for(int i=0; i<3; i++) nseed[i][0] = nseed[i][1] = 0 ;
+
         T = new double [ne*nn*nn*nn] ;
         pre = new double [ne*nn*nn*nn] ;
         mub = new double [ne*nn*nn*nn] ;
@@ -99,33 +102,46 @@ void EoS3f::eosranges(double &_emax, double &_e0, double &_nmax, double &_n0, in
         _nn=nn;
 }
 
+// Guarded walk from the previous interval instead of a full binary search.
+// For a non-decreasing grid this yields exactly the interval the original
+// binary search returned (max k in [0,ne-2] with egrid[k]<=e, 
+// for every input; successive calls query nearby e, so the walk is
+// typically 0-2 steps.
 void EoS3f::getue(double e, int &ixe, double &ue, int &iout){
-        int k, k1, k2;
+        int k1, k2;
         iout=0;
-        k1 = 0 ;
-        k2 = ne-1 ;
-        for(;k2-k1>1;){k=(k1+k2)/2 ; if(e<egrid[k])k2=k ; else k1=k ;}
+        k1 = eseed ;
+        for(;k1<ne-2 && e>=egrid[k1+1];) k1++ ;
+        for(;k1>0 && e<egrid[k1];) k1-- ;
+        eseed = k1 ;
+        k2 = k1+1 ;
         ixe=k1;
         if(ixe>ne-2) /*{iout=1;return;}// */  ixe = ne - 2 ;
         double dxe = egrid[k2] - egrid[k1] ;
         double xem = e - egrid[k1] ;
-        ue = xem/dxe ;        
-} 
+        ue = xem/dxe ;
+}
 
-void EoS3f::getun(int ie, double n, int &ixn_low, int &ixn_up, double &un_low, double &un_up, int &iout){
-        int k, k1, k2;
+// Same guarded-walk replacement as getue(); rows may contain runs of equal
+// values (e.g. all-zero rows at low e), for which the walk reproduces the
+// binary search result (max k in [0,nn-2] with ngrid[row][k]<=n) exactly.
+// islot selects the per-density seed (0=nb, 1=nq, 2=ns).
+void EoS3f::getun(int ie, double n, int &ixn_low, int &ixn_up, double &un_low, double &un_up, int &iout, int islot){
+        int k1, k2;
         // --- lower side, so for ngird[ie][...]
         //if(n<ngrid[ie][0] )/*{iout=1;return;}*/ cout<<"getun " <<n<<"  "<<ngrid[ie][0]<<endl;
         //if(n>ngrid[ie][nn-1] )/*{iout=1;return;}*/ cout <<"getun " <<n<<"  "<<ngrid[ie][nn-1]<<endl;
         iout=0;
-        k1 = 0 ;
-        k2 = nn-1 ;
         if(n>ngrid[ie][nn-1]) n=ngrid[ie][nn-1];
         if(n<ngrid[ie][0]) n=ngrid[ie][0];
-        for(;k2-k1>1;){k=(k1+k2)/2 ; if(n<ngrid[ie][k])k2=k ; else k1=k ;}
+        k1 = nseed[islot][0] ;
+        for(;k1<nn-2 && n>=ngrid[ie][k1+1];) k1++ ;
+        for(;k1>0 && n<ngrid[ie][k1];) k1-- ;
+        nseed[islot][0] = k1 ;
+        k2 = k1+1 ;
         ixn_low=k1;
         if(ixn_low>nn-2) /*{iout=1;return;} // */ ixn_low = nn - 2 ;
-        if(ixn_low<0) /*{iout=1;return;}  // */ ixn_low = 0 ; 
+        if(ixn_low<0) /*{iout=1;return;}  // */ ixn_low = 0 ;
         double dxn = ngrid[ie][k2] - ngrid[ie][k1] ;
         double xnm=n - ngrid[ie][k1] ;
         un_low = 0 ;
@@ -133,12 +149,14 @@ void EoS3f::getun(int ie, double n, int &ixn_low, int &ixn_up, double &un_low, d
         // --- upper side so for ngird[ie+1][...]
         //if(n<ngrid[ie+1][0] )/*{iout=1;return;}*/ cout <<"getun " <<n<<"  "<<ngrid[ie+1][0]<<endl;
         //if(n>ngrid[ie+1][nn-1] )/*{iout=1;return;}*/ cout <<"getun " <<n<<"  "<<ngrid[ie+1][nn-1]<<endl;
-        k1 = 0 ;
-        k2 = nn-1 ;
-        for(;k2-k1>1;){k=(k1+k2)/2 ; if(n<ngrid[ie+1][k])k2=k ; else k1=k ;}
+        k1 = nseed[islot][1] ;
+        for(;k1<nn-2 && n>=ngrid[ie+1][k1+1];) k1++ ;
+        for(;k1>0 && n<ngrid[ie+1][k1];) k1-- ;
+        nseed[islot][1] = k1 ;
+        k2 = k1+1 ;
         ixn_up=k1;
-        if(ixn_up>nn-2) /*{iout=1;return;}  // */ ixn_up = nn - 2 ; 
-        if(ixn_up<0) /*{iout=1;return;}  // */ ixn_up = 0 ; 
+        if(ixn_up>nn-2) /*{iout=1;return;}  // */ ixn_up = nn - 2 ;
+        if(ixn_up<0) /*{iout=1;return;}  // */ ixn_up = 0 ;
         dxn = ngrid[ie+1][k2] - ngrid[ie+1][k1] ;
         xnm=n - ngrid[ie+1][k1] ;
         un_up = 0 ;
@@ -153,10 +171,10 @@ void EoS3f::eos(double e, double nb, double nq, double ns,
         int ixe, ixnb_low, ixnb_up, ixnq_low, ixnq_up, ixns_low, ixns_up, iout ;
         double ue, ub_low, ub_up, uq_low, uq_up, us_low, us_up ;
    
-        getue(e,  ixe , ue, iout);                              if(iout==1){_T = _mub = _muq = _mus = _p = 999.;return;}
-        getun(ixe, nb, ixnb_low, ixnb_up, ub_low, ub_up, iout); if(iout==1){_T = _mub = _muq = _mus = _p = 999.;return;}
-        getun(ixe, nq, ixnq_low, ixnq_up, uq_low, uq_up, iout); if(iout==1){_T = _mub = _muq = _mus = _p = 999.;return;}
-        getun(ixe, ns, ixns_low, ixns_up, us_low, us_up, iout); if(iout==1){_T = _mub = _muq = _mus = _p = 999.;return;}
+        getue(e,  ixe , ue, iout);                                 if(iout==1){_T = _mub = _muq = _mus = _p = 999.;return;}
+        getun(ixe, nb, ixnb_low, ixnb_up, ub_low, ub_up, iout, 0); if(iout==1){_T = _mub = _muq = _mus = _p = 999.;return;}
+        getun(ixe, nq, ixnq_low, ixnq_up, uq_low, uq_up, iout, 1); if(iout==1){_T = _mub = _muq = _mus = _p = 999.;return;}
+        getun(ixe, ns, ixns_low, ixns_up, us_low, us_up, iout, 2); if(iout==1){_T = _mub = _muq = _mus = _p = 999.;return;}
                 
         const double  we [2] = {1.-ue, ue} ;
         const double wnb [2][2] = {{1.-ub_low, ub_low},{1.-ub_up, ub_up}} ;
@@ -198,16 +216,16 @@ void EoS3f::eos(double e, double nb, double nq, double ns,
 
 // p-only variant of eos(): same lookups, same weights, same accumulation order
 // for _p, so the returned value is bit-identical to eos()'s _p output; it only
-// skips computing T/mub/muq/mus, which callers of p() discard anyway.
+// skips computing T/mub/muq/mus, which callers of p() discard.
 double EoS3f::p(double e, double nb, double nq, double ns)
 {
         int ixe, ixnb_low, ixnb_up, ixnq_low, ixnq_up, ixns_low, ixns_up, iout ;
         double ue, ub_low, ub_up, uq_low, uq_up, us_low, us_up ;
 
-        getue(e,  ixe , ue, iout);                              if(iout==1)return 999.;
-        getun(ixe, nb, ixnb_low, ixnb_up, ub_low, ub_up, iout); if(iout==1)return 999.;
-        getun(ixe, nq, ixnq_low, ixnq_up, uq_low, uq_up, iout); if(iout==1)return 999.;
-        getun(ixe, ns, ixns_low, ixns_up, us_low, us_up, iout); if(iout==1)return 999.;
+        getue(e,  ixe , ue, iout);                                 if(iout==1)return 999.;
+        getun(ixe, nb, ixnb_low, ixnb_up, ub_low, ub_up, iout, 0); if(iout==1)return 999.;
+        getun(ixe, nq, ixnq_low, ixnq_up, uq_low, uq_up, iout, 1); if(iout==1)return 999.;
+        getun(ixe, ns, ixns_low, ixns_up, us_low, us_up, iout, 2); if(iout==1)return 999.;
 
         const double  we [2] = {1.-ue, ue} ;
         const double wnb [2][2] = {{1.-ub_low, ub_low},{1.-ub_up, ub_up}} ;
