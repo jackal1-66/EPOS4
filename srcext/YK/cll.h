@@ -7,13 +7,20 @@
 
 #pragma once
 #include <iosfwd>
+#include <iostream>
+#include <cstdlib>
 #include <algorithm>
 #include "inc.h"
 //#include "eos.h"
 //#include "rmn.h"
 class EoS ;
 
-int index44(const int &i, const int &j) ;
+// index44: returns an index of pi^{mu nu} mu,nu component in a plain 1D array
+inline int index44(const int &i, const int &j){
+  if(i>3 || j>3 || i<0 || j<0) {std::cout<<"index44: i j " <<i<<" "<<j<<std::endl ; exit(1) ; }
+  if(j<i) return (i*(i+1))/2 + j ;
+  else return (j*(j+1))/2 + i ;
+}
 
 class Cell
 {
