@@ -171,18 +171,15 @@ void EoS3f::eos(double e, double nb, double nq, double ns,
         for(int jnb=0; jnb<2; jnb++)
         for(int jnq=0; jnq<2; jnq++)
         for(int jns=0; jns<2; jns++){
-          if(pre[index(ixe+je,ixnb[je]+jnb,ixnq[je]+jnq,ixns[je]+jns)]==999.
-             &&T[index(ixe+je,ixnb[je]+jnb,ixnq[je]+jnq,ixns[je]+jns)]==999.)goto NOSOL;
-          _p   += we[je]*wnb[je][jnb]*wnq[je][jnq]*wns[je][jns]
-                  *pre[index(ixe+je,ixnb[je]+jnb,ixnq[je]+jnq,ixns[je]+jns)] ;
-          _T   += we[je]*wnb[je][jnb]*wnq[je][jnq]*wns[je][jns]
-                  *T[index(ixe+je,ixnb[je]+jnb,ixnq[je]+jnq,ixns[je]+jns)] ;
-          _mub += we[je]*wnb[je][jnb]*wnq[je][jnq]*wns[je][jns]
-                  *mub[index(ixe+je,ixnb[je]+jnb,ixnq[je]+jnq,ixns[je]+jns)] ;
-          _muq += we[je]*wnb[je][jnb]*wnq[je][jnq]*wns[je][jns]
-                  *muq[index(ixe+je,ixnb[je]+jnb,ixnq[je]+jnq,ixns[je]+jns)] ;
-          _mus += we[je]*wnb[je][jnb]*wnq[je][jnq]*wns[je][jns]
-                   *mus[index(ixe+je,ixnb[je]+jnb,ixnq[je]+jnq,ixns[je]+jns)] ;
+          const int idx = index(ixe+je,ixnb[je]+jnb,ixnq[je]+jnq,ixns[je]+jns) ;
+          if(pre[idx]==999.
+             &&T[idx]==999.)goto NOSOL;
+          const double w = we[je]*wnb[je][jnb]*wnq[je][jnq]*wns[je][jns] ;
+          _p   += w*pre[idx] ;
+          _T   += w*T[idx] ;
+          _mub += w*mub[idx] ;
+          _muq += w*muq[idx] ;
+          _mus += w*mus[idx] ;
           // T 
           //cout << "EoS3f::eos  "<< ixe+je <<" "<<ixnb[je]+jnb <<" "<<ixnq[je]+jnq<<" "<<ixns[je]+jns  
           // <<"  " << index(ixe+je,ixnb[je]+jnb,ixnq[je]+jnq,ixns[je]+jns)<<"  " ;
