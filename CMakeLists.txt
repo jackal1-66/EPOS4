@@ -385,6 +385,22 @@ if (EPOS_ENABLE_TESTING)
   )
 endif()
 
+####################################################################################
+# binary eos table: convert the ASCII table once at build time;
+# the launcher prefers it (no per-job .gz extraction) and EoS3f loads it directly
+####################################################################################
+if(WITH_HYDRODYNAMIC)
+  add_executable(eosconvert src/MS/eosconvert.cpp)
+  add_custom_command(OUTPUT ${PROJECT_BINARY_DIR}/eos4f.eosb
+    COMMAND gunzip -c ${CMAKE_SOURCE_DIR}/src/KWt/eos4f.eos.gz > ${PROJECT_BINARY_DIR}/eos4f.eos.tmp
+    COMMAND $<TARGET_FILE:eosconvert> ${PROJECT_BINARY_DIR}/eos4f.eos.tmp ${PROJECT_BINARY_DIR}/eos4f.eosb
+    COMMAND ${CMAKE_COMMAND} -E remove ${PROJECT_BINARY_DIR}/eos4f.eos.tmp
+    DEPENDS eosconvert ${CMAKE_SOURCE_DIR}/src/KWt/eos4f.eos.gz
+    COMMENT "Converting eos4f table to binary format")
+  add_custom_target(eos4fbinary ALL DEPENDS ${PROJECT_BINARY_DIR}/eos4f.eosb)
+  install(FILES ${PROJECT_BINARY_DIR}/eos4f.eosb
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/src/KWt)
+endif()
 
 ####################################################################################
 ####################################################################################

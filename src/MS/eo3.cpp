@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <ctime>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 #include <charconv>
@@ -43,6 +44,60 @@ EoS3f::EoS3f(char *filename, double _B, double _volex0, double _delta0, double _
                 fraw.seekg(0, ios::beg) ;
                 if(len > 0) fraw.read(&buf[0], len) ;
         }
+        // Binary table produced at build time by src/MS/eosconvert.cpp from ASCII
+        // layout: magic, int ne,nn, double B,volex0,delta0,
+        // aaa,bbb,emax,e0, egrid[ne], ngrid[ne*nn], pre/T/mub/muq/mus[npts].
+        // Falls through to the ASCII parser when the `magic` is absent.
+        static const char eosb_magic[16] = "EPOS4EOS3F-BIN1" ;
+        if(buf.size() >= 16+2*sizeof(int)+7*sizeof(double)
+           && memcmp(buf.data(), eosb_magic, 16) == 0){
+                const char *bp = buf.data() + 16 ;
+                int dims[2] ;
+                double hdr[7] ;
+                memcpy(dims, bp, sizeof dims) ; bp += sizeof dims ;
+                memcpy(hdr, bp, sizeof hdr) ; bp += sizeof hdr ;
+                ne = dims[0] ; nn = dims[1] ;
+                B = hdr[0] ; volex0 = hdr[1] ; delta0 = hdr[2] ; aaa = hdr[3] ; bbb = hdr[4] ;
+                emax = hdr[5] ; e0 = hdr[6] ;
+        if( B > 0 )
+        {
+        if(fabs(B-_B)          >1e-5){ cout <<"\n\n\n      B =      "<<B     <<" instead of "<<_B     <<"; exiting\n\n\n\n" ; exit(0) ; }
+        if(fabs(volex0-_volex0)>1e-5){ cout <<"\n\n\n      volex0 = "<<volex0<<" instead of "<<_volex0<<"; exiting\n\n\n\n" ; exit(0) ; }
+        if(fabs(delta0-_delta0)>1e-5){ cout <<"\n\n\n      delta0 = "<<delta0<<" instead of "<<_delta0<<"; exiting\n\n\n\n" ; exit(0) ; }
+        if(fabs(aaa-_aaa)      >1e-5){ cout <<"\n\n\n      aaa =    "<<aaa   <<" instead of "<<_aaa   <<"; exiting\n\n\n\n" ; exit(0) ; }
+        if(fabs(bbb-_bbb)      >1e-5){ cout <<"\n\n\n      bbb =    "<<bbb   <<" instead of "<<_bbb   <<"; exiting\n\n\n\n" ; exit(0) ; }
+        }
+                const size_t npts = (size_t)ne*nn*nn*nn ;
+                const size_t need = 16 + 2*sizeof(int)
+                  + (7 + (size_t)ne + (size_t)ne*nn + 5*npts)*sizeof(double) ;
+                if(ne <= 0 || nn <= 0 || buf.size() != need){
+                        cout<<"reading failed, truncated or corrupt binary eos table"<<endl;
+                        exit(13);
+                }
+                egrid = new double [ne] ;
+                ngrid = new double [ne*nn] ;
+                memcpy(egrid, bp, (size_t)ne*sizeof(double)) ;       bp += (size_t)ne*sizeof(double) ;
+                memcpy(ngrid, bp, (size_t)ne*nn*sizeof(double)) ;    bp += (size_t)ne*nn*sizeof(double) ;
+
+                eseed = 0 ;
+                for(int i=0; i<3; i++) nseed[i][0] = nseed[i][1] = 0 ;
+
+                T = new double [ne*nn*nn*nn] ;
+                pre = new double [ne*nn*nn*nn] ;
+                mub = new double [ne*nn*nn*nn] ;
+                muq = new double [ne*nn*nn*nn] ;
+                mus = new double [ne*nn*nn*nn] ;
+                memcpy(pre, bp, npts*sizeof(double)) ; bp += npts*sizeof(double) ;
+                memcpy(T,   bp, npts*sizeof(double)) ; bp += npts*sizeof(double) ;
+                memcpy(mub, bp, npts*sizeof(double)) ; bp += npts*sizeof(double) ;
+                memcpy(muq, bp, npts*sizeof(double)) ; bp += npts*sizeof(double) ;
+                memcpy(mus, bp, npts*sizeof(double)) ;
+                // same small-pressure clamp the ASCII parse loop applies
+                for(size_t i=0; i<npts; i++)
+                        if( pre[i] < 1e-18 ) pre[i] = 0. ;
+                return ;
+        }
+
         const char *sp = buf.data() ;
         const char *se = sp + buf.size() ;
         bool okread = true ;

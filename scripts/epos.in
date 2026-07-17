@@ -232,9 +232,14 @@ rm -f ${CHK}z-${one}.copyDo1
 rm -f ${CHK}z-${one}.copyDo2 
 rm -f ${CHK}z-${one}.log 
 
-# The 439 MB EoS table is only read when the run activates an EoS/hydro
+# The 439 MB EoS table is only read when the run activates EoS/hydro
 if grep -qE '^[[:space:]]*(eos|hydro|input)[[:space:]]' ${OPX}z-${one}.optns; then
+if [ -f ${SRC}KWt/eos4f.eosb ]; then
+# binary table produced at build time (same values, loaded directly)
+ln -sf ${SRC}KWt/eos4f.eosb z-eos4f.eos
+else
 gunzip -c ${SRC}KWt/eos4f.eos.gz > z-eos4f.eos
+fi
 fi
 
 seedj=$seed_j
