@@ -402,6 +402,19 @@ if(WITH_HYDRODYNAMIC)
     DESTINATION ${CMAKE_INSTALL_DATADIR}/src/KWt)
 endif()
 
+# binary rj table sidecars: raw floats parsed from the ASCII tokens
+# with the same strtof conversion the runtime readers use (bit-identical)
+add_executable(rjconvert src/KW/rjconvert.cpp)
+add_custom_command(OUTPUT ${PROJECT_BINARY_DIR}/KWn-bin.stamp
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/KWn-bin
+  COMMAND $<TARGET_FILE:rjconvert> ${CMAKE_SOURCE_DIR}/src/KWn ${PROJECT_BINARY_DIR}/KWn-bin
+  COMMAND ${CMAKE_COMMAND} -E touch ${PROJECT_BINARY_DIR}/KWn-bin.stamp
+  DEPENDS rjconvert
+  COMMENT "Converting rj tables to binary sidecars")
+add_custom_target(rjbinary ALL DEPENDS ${PROJECT_BINARY_DIR}/KWn-bin.stamp)
+install(DIRECTORY ${PROJECT_BINARY_DIR}/KWn-bin/
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/src/KWn FILES_MATCHING PATTERN "*.ib")
+
 ####################################################################################
 ####################################################################################
 # installation
