@@ -1811,6 +1811,40 @@ double gethydynbarc_(int *n, int *neta, int *ntau, int *nx, int *ny) {
 //! delete barc array
 void destroyhydynbarc_() { delete hydyn->getBarc(); }
 
+//! get velc(1..2) and epsc at one grid point in a single call
+/*!
+\param neta indice - int pointer type
+\param ntau indice - int pointer type
+\param nx indice - int pointer type
+\param ny indice - int pointer type
+\param out - out[0..1] = velc(1..2), out[2] = epsc - double array of 3
+*/
+void gethydynve_(int *neta, int *ntau, int *nx, int *ny, double *out) {
+  out[0] = hydyn->getVelcValue(1, *neta, *ntau, *nx, *ny);
+  out[1] = hydyn->getVelcValue(2, *neta, *ntau, *nx, *ny);
+  out[2] = hydyn->getEpscValue(*neta, *ntau, *nx, *ny);
+}
+
+//! get velc(1..3), epsc, barc(1..3), sigc at one grid point in a single call
+/*!
+\param neta indice - int pointer type
+\param ntau indice - int pointer type
+\param nx indice - int pointer type
+\param ny indice - int pointer type
+\param out - out[0..2] = velc(1..3), out[3] = epsc, out[4..6] = barc(1..3),
+             out[7] = sigc - double array of 8
+*/
+void gethydyncorner_(int *neta, int *ntau, int *nx, int *ny, double *out) {
+  out[0] = hydyn->getVelcValue(1, *neta, *ntau, *nx, *ny);
+  out[1] = hydyn->getVelcValue(2, *neta, *ntau, *nx, *ny);
+  out[2] = hydyn->getVelcValue(3, *neta, *ntau, *nx, *ny);
+  out[3] = hydyn->getEpscValue(*neta, *ntau, *nx, *ny);
+  out[4] = hydyn->getBarcValue(1, *neta, *ntau, *nx, *ny);
+  out[5] = hydyn->getBarcValue(2, *neta, *ntau, *nx, *ny);
+  out[6] = hydyn->getBarcValue(3, *neta, *ntau, *nx, *ny);
+  out[7] = hydyn->getSigcValue(*neta, *ntau, *nx, *ny);
+}
+
 //! get nxhy, nyhy, nzhy, ntauhy attribute values
 /*!
 \param nxhyParam - the nxhy attribute address - int pointer type

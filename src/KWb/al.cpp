@@ -277,7 +277,8 @@ extern "C" void createemuc_(int* n1, int* n2, int* n3, int* n4, int* n5)        
 extern "C" void destroyemuc_(void)                                                { delete emuc ; }
 extern "C" void emucset_(int* i1, int* i2, int* i3, int* i4, int* i5, float* val) { emuc->set(*i1-1, *i2-1, *i3-1, *i4-1, *i5-1, *val) ; }
 extern "C" void emucget_(int* i1, int* i2, int* i3, int* i4, int* i5, float* val) { emuc->get(*i1-1, *i2-1, *i3-1, *i4-1, *i5-1, *val) ; }
- 
+extern "C" void emucgetrow_(int* i2, int* i3, int* i4, int* i5, float* out)       { for (int i1 = 0; i1 < 10; i1++) emuc->get(i1, *i2-1, *i3-1, *i4-1, *i5-1, out[i1]) ; } 
+
 //-------------------------------------------------------------------------------------------
 
 Mudiar<float> *velio ;

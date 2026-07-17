@@ -138,6 +138,8 @@ c      use hocoModule, only: velc, barc, sigc
       real val
       common/citsy/itsy(4,4)
       real wi(3),wj(3)
+      real wemuc(10)
+      double precision dve(3),dcor(8)
       data nnn/0/
       data ncntrdhy/0/
       save ncntrdhy
@@ -353,14 +355,15 @@ c     *          ,ntau=1,ntauhy),nx=1,nxhy),ny=1,nyhy)
           vt=0
           do nx=1,nxhy
           do ny=1,nyhy
-             e=max(0.d0,getHydynEpsc(neta,ntau,nx,ny))
+             call gethydynve(neta,ntau,nx,ny,dve)
+             e=max(0.d0,dve(3))
              esum=esum+e
              x=xminhy+(nx-1)*(xmaxhy-xminhy)/(nxhy-1)
              y=yminhy+(ny-1)*(ymaxhy-yminhy)/(nyhy-1)
              xx=xx+x**2*e
              yy=yy+y**2*e
-             vx=getHydynVelc(1,neta,ntau,nx,ny)
-             vy=getHydynVelc(2,neta,ntau,nx,ny)
+             vx=dve(1)
+             vy=dve(2)
              vxx=vxx+vx**2*e
              vyy=vyy+vy**2*e
              if(vx**2+vy**2.ne.0.)
@@ -459,18 +462,19 @@ c     *          ,ntau=1,ntauhy),nx=1,nxhy),ny=1,nyhy)
            wj(2)=frac
            do i=1,2
             do j=1,2
+              call emucgetrow(neta,ntau,nx+i-1,ny+j-1, wemuc )
               do ivi=1,10
-               call emucget(ivi,neta,ntau,nx+i-1,ny+j-1, ww )
-               pixx(ivi)=pixx(ivi)+ ww * wi(i)*wj(j)
+               pixx(ivi)=pixx(ivi)+ wemuc(ivi) * wi(i)*wj(j)
               enddo
-              vx=vx+getHydynVelc(1,neta,ntau,nx+i-1,ny+j-1)* wi(i)*wj(j)
-              vy=vy+getHydynVelc(2,neta,ntau,nx+i-1,ny+j-1)* wi(i)*wj(j)
-              vz=vz+getHydynVelc(3,neta,ntau,nx+i-1,ny+j-1)* wi(i)*wj(j)
-              ep=ep+getHydynEpsc(  neta,ntau,nx+i-1,ny+j-1)* wi(i)*wj(j)
-              ba=ba+getHydynBarc(1,neta,ntau,nx+i-1,ny+j-1)* wi(i)*wj(j)
-              b2=b2+getHydynBarc(2,neta,ntau,nx+i-1,ny+j-1)* wi(i)*wj(j)
-              b3=b3+getHydynBarc(3,neta,ntau,nx+i-1,ny+j-1)* wi(i)*wj(j)
-              sg=sg+getHydynSigc(  neta,ntau,nx+i-1,ny+j-1)* wi(i)*wj(j)
+              call gethydyncorner(neta,ntau,nx+i-1,ny+j-1, dcor )
+              vx=vx+dcor(1)* wi(i)*wj(j)
+              vy=vy+dcor(2)* wi(i)*wj(j)
+              vz=vz+dcor(3)* wi(i)*wj(j)
+              ep=ep+dcor(4)* wi(i)*wj(j)
+              ba=ba+dcor(5)* wi(i)*wj(j)
+              b2=b2+dcor(6)* wi(i)*wj(j)
+              b3=b3+dcor(7)* wi(i)*wj(j)
+              sg=sg+dcor(8)* wi(i)*wj(j)
             enddo
            enddo
            endif
@@ -1537,4 +1541,3 @@ c      use hocoModule, only: velc
         iout=0
       endif
       end
-
