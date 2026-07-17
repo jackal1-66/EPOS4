@@ -1609,7 +1609,17 @@ c take ps(1..4) and do contribution to grid-points
         xo(2)=min( xo(2) , yminIco+(float(nyIco)-0.5)*dely )
         !write(ifmt,*)'xo(1/2) = ',xo(1),xo(2)
       endif
-      do iz=1,nzIco
+      !restrict the loops to the smoothing kernel support.
+      !cells outside can be skipped exactly
+      zwid=lmbdaz*sigmaz
+      dwid=lmbdad*sigmad
+      izlo=max(1,int((eta-zwid-zminIco)/delz+0.5)-1)
+      izhi=min(nzIco,int((eta+zwid-zminIco)/delz+0.5)+2)
+      ixlo=max(1,int((xo(1)-dwid-xminIco)/delx+0.5)-1)
+      ixhi=min(nxIco,int((xo(1)+dwid-xminIco)/delx+0.5)+2)
+      iylo=max(1,int((xo(2)-dwid-yminIco)/dely+0.5)-1)
+      iyhi=min(nyIco,int((xo(2)+dwid-yminIco)/dely+0.5)+2)
+      do iz=izlo,izhi
         zz=zminIco +(float(iz)-0.5)*delz
         z2=( eta - zz )**2
         !.......boost ps() into co-moving frame with rapidity=zz
@@ -1637,9 +1647,9 @@ c take ps(1..4) and do contribution to grid-points
         !after boost:
         pp(3)=0
         pp(4)=amt
-        do ix=1,nxIco
+        do ix=ixlo,ixhi
           xx=xminIco+(float(ix)-0.5)*delx
-          do iy=1,nyIco
+          do iy=iylo,iyhi
             yy=yminIco+(float(iy)-0.5)*dely
             d2=(xo(1)-xx)**2+(xo(2)-yy)**2
             if(d2.gt.lmbdad**2*sigmad**2.
@@ -4475,6 +4485,3 @@ c        w=w+wz(k)*IcoE(  i,j,jz+k-1)
       endif
       wIcoPI1=w
       end
-
-
-
