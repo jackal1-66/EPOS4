@@ -257,6 +257,11 @@ extern "C" void idpairstcreate_(int* n1,int* n2)      { idpairst = new Mudiar<in
 extern "C" void idpairstdestroy_(void)                        { delete idpairst ; }
 extern "C" void idpairstset_(int* i1,int* i2,int* val){ idpairst->set(*i1-1,*i2-1, *val) ;  }
 extern "C" void idpairstget_(int* i1,int* i2,int* val){ idpairst->get(*i1-1,*i2-1, *val) ;  }
+// batched accessors: one Fortran/C++ crossing per chunk instead of per element
+extern "C" void pairstwgtbatch_(int* istart,int* n,float* w)
+{ for(int k=0;k<*n;k++) wgtpairst->get(*istart-1+k, w[k]) ; }
+extern "C" void pairstidbatch_(int* istart,int* n,int* id1,int* id2)
+{ for(int k=0;k<*n;k++){ idpairst->get(0,*istart-1+k, id1[k]) ; idpairst->get(1,*istart-1+k, id2[k]) ; } }
 
 Mudiar<int> *lkfok ;
 extern "C" void lkfokcreate_(int* n1, int* n2, int* n3, int* n4, int* n5)       { lkfok = new Mudiar<int>(*n1, *n2, *n3, *n4, *n5) ; }
@@ -382,5 +387,3 @@ extern "C" void ibptlget2_(int * i, int * j, int * ival)                        
 //-------------------------------------------------------------------------------------------
 
   /*   OmTab removed after version 3238  */
-
-

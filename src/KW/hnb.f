@@ -2385,6 +2385,9 @@ c----------------------------------------------------------------------
       common/cspec6/wpairst(mxidx)
       common/cflac/ifok(nflav,mspecs+1),ifoa(nflav)
       dimension jc(nflav,2)!,jc2(nflav,2)
+      parameter (nbat=256)
+      real wtb(nbat)
+      integer id1b(nbat),id2b(nbat)
 
       wei=1
       if(iopair.eq.4)return
@@ -2411,17 +2414,26 @@ c----------------------------------------------------------------------
 
       r=rangen()
       wtt=0
-      do i=1,ipair
-        call wgtpairstget(i+ipairst(2,idx),wt)
-        wei=wt/wtot
+      !chunked scan: one store crossing per nbat entries; same weights in
+      !the same order, so the selected index and wei are unchanged
+      i=1
+ 41   continue
+      nb=min(nbat,ipair-i+1)
+      call pairstwgtbatch(i+ipairst(2,idx),nb,wtb)
+      do k=1,nb
+        wei=wtb(k)/wtot
         wtt=wtt+wei
-        !write(ifmt,'(a,i6,i6,2x,3i3,3x,2i7,2f9.4)')'hnbpaj',i
-        !.  ,idx,iqu,iqd,iqs,wtt,r
-        if(wtt.ge.r)goto 4
+        if(wtt.ge.r)then
+          i=i+k-1
+          goto 4
+        endif
       enddo
-      i=min(i,ipair)
+      i=i+nb
+      if(i.le.ipair)goto 41
+      i=ipair
   4   continue
-      !only the selected pair ids are needed
+      !only the selected pair's ids are needed; a single fetch here gives
+      !the same id1,id2 that the per-iteration fetches left behind
       call idpairstget(1,i+ipairst(2,idx),id1)
       call idpairstget(2,i+ipairst(2,idx),id2)
 
@@ -2429,14 +2441,21 @@ c----------------------------------------------------------------------
 
       else !~~~~~~~~~~~~~~~ given ids ~~~~~~~~~~~~~~~~~~~~
  
-      do i=1,ipair
-        call idpairstget(1,i+ipairst(2,idx),id1xx)
-        call idpairstget(2,i+ipairst(2,idx),id2xx)
-        if(id1.eq.id1xx.and.id2.eq.id2xx)goto 5
+      i=1
+ 51   continue
+      nb=min(nbat,ipair-i+1)
+      call pairstidbatch(i+ipairst(2,idx),nb,id1b,id2b)
+      do k=1,nb
+        if(id1.eq.id1b(k).and.id2.eq.id2b(k))then
+          i=i+k-1
+          goto 5
+        endif
       enddo
+      i=i+nb
+      if(i.le.ipair)goto 51
   5   continue
       !the weight only matters for the matched pair (or the last one when
-      !there is no match). Fetched once now
+      !there is no match, exactly as before); fetch it once
       i=min(i,ipair)
       call wgtpairstget(i+ipairst(2,idx),wt)
       wei=wt/wtot
