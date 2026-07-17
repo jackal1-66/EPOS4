@@ -70,3 +70,48 @@ void fastreadf_(const char *fname, int *ioff, float *a, const int *n,
     munmap(map, len);
     *ierr = 0;
 }
+
+/* Read *n raw floats from a binary rj sidecar (see src/KW/rjconvert.cpp:
+   16-byte magic, int32 total count, float payload) starting at byte offset
+   *ioff (first call passes 20 = past magic+count); advance *ioff.  The
+   sidecar values were produced by strtof of the ASCII tokens. */
+
+static const char rjb_magic[16] = "EPOS4RJTAB-BIN1";
+
+void fastreadfb_(const char *fname, int *ioff, float *a, const int *n,
+                 int *ierr)
+{
+    *ierr = 1;
+    int fd = open(fname, O_RDONLY);
+    if (fd < 0)
+        return;
+    struct stat st;
+    if (fstat(fd, &st) != 0)
+    {
+        close(fd);
+        return;
+    }
+    size_t len = (size_t)st.st_size;
+    char *map = mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
+    close(fd);
+    if (map == MAP_FAILED)
+        return;
+
+    *ierr = 2;
+    int total;
+    if (len < 20 || memcmp(map, rjb_magic, 16) != 0)
+    {
+        munmap(map, len);
+        return;
+    }
+    memcpy(&total, map + 16, sizeof(int));
+    if (len != 20 + (size_t)total * sizeof(float) || *ioff < 20 || (size_t)*ioff + (size_t)*n * sizeof(float) > len)
+    {
+        munmap(map, len);
+        return;
+    }
+    memcpy(a, map + *ioff, (size_t)*n * sizeof(float));
+    *ioff += *n * (int)sizeof(float);
+    munmap(map, len);
+    *ierr = 0;
+}

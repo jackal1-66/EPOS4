@@ -1429,6 +1429,8 @@ c      double precision om5p,xh,yh,v3pom(4),om2p
       character*4 ch4
       character*2 ch2
       character*520 fnrjt
+      character*520 fnrjbt
+      logical lrjbin
       npriom=0
 
       call utpri('mkCsOm',ish,ishini,4)
@@ -2618,7 +2620,23 @@ cKW21     *  .or.factk0 .ne.factk
           stop
         endif 
         !bulk-parse the arrays in C
-        !ftell gives the offset where the array records start after the header
+        !prefer the binary sidecar produced at build time (same strtof values, raw
+        !floats); else ftell gives the offset where the array records
+        !start after the header and the ASCII is parsed directly
+        fnrjbt=fnii(1:ix)//'rj'//q2mnch(nq2mn)//q2mnch(nq2xx)
+     &       //zzvexch(iv)//'.ib'
+        lnrjb=index(fnrjbt,'.ib')+2
+        inquire(file=fnrjbt(1:lnrjb),exist=lrjbin)
+        if(lrjbin)then
+        fnrjbt=fnrjbt(1:lnrjb)//CHAR(0)
+        iofrj=20
+        call fastreadfb(fnrjbt,iofrj,fhss,88000,ierrrj)
+        if(ierrrj.eq.0)call fastreadfb(fnrjbt,iofrj,fhgg,88000,ierrrj)
+        if(ierrrj.eq.0)call fastreadfb(fnrjbt,iofrj,fhqg,88000,ierrrj)
+        if(ierrrj.eq.0)call fastreadfb(fnrjbt,iofrj,fhgq,88000,ierrrj)
+        if(ierrrj.eq.0)call fastreadfb(fnrjbt,iofrj,fhqq,8800,ierrrj)
+        if(ierrrj.ne.0)stop'ERROR reading rj table (fastreadfb)'
+        else
         call ftell(1,iofrj)
         fnrjt=fnii(1:ix)//'rj'//q2mnch(nq2mn)//q2mnch(nq2xx)
      &       //zzvexch(iv)//'.i'//CHAR(0)
@@ -2628,6 +2646,7 @@ cKW21     *  .or.factk0 .ne.factk
         if(ierrrj.eq.0)call fastreadf(fnrjt,iofrj,fhgq,88000,ierrrj)
         if(ierrrj.eq.0)call fastreadf(fnrjt,iofrj,fhqq,8800,ierrrj)
         if(ierrrj.ne.0)stop'ERROR reading rj table (fastreadf)'
+        endif
         close(1)
         if(.not.negjdis)goto 4
 c       else        !not symmetric Qs2
